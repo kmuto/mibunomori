@@ -1,0 +1,153 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+/* 既存の style.css の内容をコピー */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+header {
+    background-color: #4CAF50;
+    color: white;
+    padding: 1rem 0;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+main {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 20px auto;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.mib-tree ul {
+    list-style-type: none;
+    padding-left: 20px;
+}
+
+/* ul ul { display: none; } は不要、JSで制御 */
+
+.mib-tree li {
+    margin: 5px 0;
+    line-height: 1.5;
+}
+
+/* has-children の li に expanded クラスを付けて、子ulを表示するCSSは不要に */
+/* 代わりに、MIBTreeNode コンポーネント内で isExpanded ステートを使って style.display を直接制御 */
+
+.mib-tree li.has-children > span:before {
+    content: '\25B6'; /* ▶ Unicode character for right-pointing triangle */
+    display: inline-block;
+    margin-right: 6px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.mib-tree li.has-children > span.expanded:before { /* span.expanded に変更 */
+    content: '\25BC'; /* ▼ Unicode character for down-pointing triangle */
+    transform: rotate(90deg); /* 展開時に回転させる */
+}
+
+.mib-tree li.has-children > span {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.mib-tree .node-name {
+    color: #0056b3; /* 名前を青色に */
+}
+
+.mib-tree .node-oid {
+    color: #666; /* OIDを灰色に */
+    font-size: 0.9em;
+    margin-left: 10px;
+}
+
+.mib-tree .node-description {
+    font-style: italic;
+    color: #555;
+    font-size: 0.85em;
+    margin-left: 20px;
+    margin-top: 5px;
+    display: block; /* 常に表示 */
+}
+
+/* 検索結果のハイライト */
+.mib-tree .highlighted-node {
+    background-color: #ffeb3b; /* 明るい黄色 */
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background-color 0.3s ease;
+}
