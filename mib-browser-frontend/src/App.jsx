@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// import './App.css'; // 必要であれば独自のCSSファイルをインポート。今回はindex.cssで十分。
 
 // MIBNodeの型定義 (TypeScriptを使わない場合はコメントアウトしてもOK)
 /**
@@ -76,15 +75,15 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, onNodeExpand, search
         )}
       </span>
       
-      {/* 子ノードがある場合のみ ul をレンダリングし、展開状態に応じて表示/非表示を切り替える */}
-      {hasChildren && (
-        <ul style={{ display: isExpanded ? 'block' : 'none' }}>
+      {/* 変更点: isExpanded が true の場合のみ子ノードの ul をレンダリングする */}
+      {hasChildren && isExpanded && ( // ここを修正
+        <ul>
           {node.children.map((childNode) => (
             <MIBTreeNode 
               key={childNode.oid} 
               node={childNode} 
               onNodeExpand={onNodeExpand} // 子コンポーネントに展開Setter登録関数を渡す
-              searchTargetOid={searchTargetOid} // 検索ターゲットOIDを子に渡す
+              searchTargetOid={searchTargetOid} // 検索ターゲットOIDを渡す
             />
           ))}
         </ul>
@@ -118,8 +117,6 @@ function App() {
   useEffect(() => {
     const fetchMibData = async () => {
       try {
-        // バックエンドのURLは、Goアプリケーションが動作している場所に応じて調整してください
-        // ローカルでGoアプリがポート5000で動作している場合
         const response = await fetch('http://localhost:5000/api/mib_tree');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -142,10 +139,8 @@ function App() {
         flatMibNodes.current = flatten(data);
 
       } catch (err) {
-        // エラーが発生した場合、エラー状態を更新
         setError(err.message);
       } finally {
-        // ロードが完了したら、ロード中状態をfalseに設定
         setLoading(false);
       }
     };
