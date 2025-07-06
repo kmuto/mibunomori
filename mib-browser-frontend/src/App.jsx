@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+// import './App.css'; // 必要であれば独自のCSSファイルをインポート。今回はindex.cssで十分。
 
 // MIBNodeの型定義 (TypeScriptを使わない場合はコメントアウトしてもOK)
 /**
@@ -11,9 +12,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 // MIBツリーの個々のノードを表示するコンポーネント
 // React.memo を適用して、プロップが変更されない限り再レンダリングをスキップさせ、パフォーマンスを最適化
-const MIBTreeNode = React.memo(function MIBTreeNode({ node, onNodeExpand, searchTargetOid }) {
-  // ノードの展開状態を管理
-  const [isExpanded, setIsExpanded] = useState(false);
+const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggleNodeExpansion, searchTargetOid }) {
+  // このノードが展開されているかどうかを一元管理された状態から取得
+  const isExpanded = expandedOids.has(node.oid);
   // このノードのDOM要素への参照
   const nodeRef = useRef(null);
 
@@ -22,20 +23,12 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, onNodeExpand, search
   // このノードが検索ターゲットのOIDと完全に一致するかどうか
   const isThisNodeSearchTarget = searchTargetOid === node.oid;
 
-  // 展開/折りたたみトグル関数。useCallbackでメモ化して不要な再生成を防ぐ
-  const toggleExpand = useCallback(() => {
+  // 展開/折りたたみトグル関数。親から渡された関数を呼び出す
+  const handleClick = useCallback(() => {
     if (hasChildren) {
-      setIsExpanded(prev => !prev);
+      toggleNodeExpansion(node.oid); // 親の展開状態を更新
     }
-  }, [hasChildren]); // hasChildren が変わらない限り関数は再生成されない
-
-  // 親コンポーネント（App）に自身の展開状態setterを登録する
-  // これにより、Appコンポーネントから特定のノードをプログラム的に展開できるようになる
-  useEffect(() => {
-    if (onNodeExpand) {
-      onNodeExpand(node.oid, setIsExpanded);
-    }
-  }, [node.oid, onNodeExpand]); // node.oid または onNodeExpand が変更されたら実行
+  }, [hasChildren, node.oid, toggleNodeExpansion]);
 
   // このノードが検索ターゲットになった場合の処理
   useEffect(() => {
@@ -61,7 +54,7 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, onNodeExpand, search
     <li className={hasChildren ? 'has-children' : ''}>
       {/* クリック可能な要素を span で囲む。アイコンの表示と回転もこの span で制御 */}
       <span
-        onClick={toggleExpand}
+        onClick={handleClick} // クリックハンドラを変更
         // アイコン回転用クラスと、検索ターゲット時のハイライトクラスを適用
         className={`${isExpanded ? 'expanded' : ''} ${isThisNodeSearchTarget ? 'highlighted-node' : ''}`}
         // クリック領域を確保するためブロック要素に、子ノードがある場合はカーソルをポインターに
@@ -75,15 +68,16 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, onNodeExpand, search
         )}
       </span>
       
-      {/* 変更点: isExpanded が true の場合のみ子ノードの ul をレンダリングする */}
-      {hasChildren && isExpanded && ( // ここを修正
+      {/* 子ノードがある場合、かつ展開されている場合のみ子ノードの ul をレンダリングする */}
+      {hasChildren && isExpanded && ( // ここは前回の修正のまま
         <ul>
           {node.children.map((childNode) => (
             <MIBTreeNode 
               key={childNode.oid} 
               node={childNode} 
-              onNodeExpand={onNodeExpand} // 子コンポーネントに展開Setter登録関数を渡す
-              searchTargetOid={searchTargetOid} // 検索ターゲットOIDを渡す
+              expandedOids={expandedOids} // 展開状態を子に渡す
+              toggleNodeExpansion={toggleNodeExpansion} // 展開トグル関数を子に渡す
+              searchTargetOid={searchTargetOid} // 検索ターゲットOIDを子に渡す
             />
           ))}
         </ul>
@@ -101,16 +95,25 @@ function App() {
   const [searchQuery, setSearchQuery] = useState(''); // 検索クエリの状態
   const [searchTargetOid, setSearchTargetOid] = useState(null); // 検索で見つかったターゲットノードのOID
 
-  // OID -> 展開状態Setter のマップ (ノード展開状態をプログラム的に制御するために必要)
-  // useRef を使うことで、コンポーネントの再レンダリングをトリガーせずに可変の値を保持
-  const expandSetters = useRef({}); 
+  // 展開されているOIDのセットを一元管理
+  // Setオブジェクトは参照が変更されない限りReactは再レンダリングしないので、効率的
+  const [expandedOids, setExpandedOids] = useState(new Set()); 
 
   // MIBデータをフラットなリストとして保持（検索効率化のため）
   const flatMibNodes = useRef([]);
 
-  // ノードの展開Setterを登録するコールバック。useCallbackでメモ化。
-  const registerExpandSetter = useCallback((oid, setter) => {
-    expandSetters.current[oid] = setter;
+  // ノードの展開状態をトグルする関数
+  // useCallbackでメモ化し、子コンポーネントへの不要な再生成を防ぐ
+  const toggleNodeExpansion = useCallback((oid) => {
+    setExpandedOids(prevExpandedOids => {
+      const newExpandedOids = new Set(prevExpandedOids); // 新しいSetを作成して変更
+      if (newExpandedOids.has(oid)) {
+        newExpandedOids.delete(oid); // 展開済みなら閉じる
+      } else {
+        newExpandedOids.add(oid); // 閉じていれば展開
+      }
+      return newExpandedOids;
+    });
   }, []);
 
   // コンポーネントマウント時にバックエンドからMIBデータを取得
@@ -150,34 +153,32 @@ function App() {
 
   // OID検索ハンドラ
   const handleSearch = () => {
-    // 検索クエリが空の場合、検索ターゲットをクリア
+    // 検索クエリが空の場合、検索ターゲットをクリアし、全ての展開状態をリセット
     if (!searchQuery) {
         setSearchTargetOid(null);
+        setExpandedOids(new Set()); // 全て閉じる
         return;
     }
 
-    // フラットなリストから前方一致で検索（より洗練された検索アルゴリズムも可能）
+    // フラットなリストから前方一致で検索
     const foundNode = flatMibNodes.current.find(node => node.oid.startsWith(searchQuery));
 
     if (foundNode) {
-        // 検索ターゲットOIDを設定
-        setSearchTargetOid(foundNode.oid); 
+        setSearchTargetOid(foundNode.oid); // 検索ターゲットOIDを設定
         
-        // ターゲットノードまでのパスを全て展開
-        const oidParts = foundNode.oid.split('.');
-        let currentOidPath = '';
-        for (let i = 0; i < oidParts.length; i++) {
-            // OIDパスを段階的に構築 (例: "1", "1.3", "1.3.6")
-            currentOidPath = (currentOidPath ? currentOidPath + '.' : '') + oidParts[i];
-            
-            // 該当するOIDのノードの展開Setterを取得し、展開状態にセット
-            const setter = expandSetters.current[currentOidPath];
-            if (setter) {
-                setter(true); // 展開状態にセット
+        // ターゲットノードまでのパスを全て展開するための新しいSetを作成
+        setExpandedOids(prevExpandedOids => {
+            const newExpandedOids = new Set(prevExpandedOids); // 既存の展開状態をコピー
+            const oidParts = foundNode.oid.split('.');
+            let currentOidPath = '';
+            for (let i = 0; i < oidParts.length; i++) {
+                currentOidPath = (currentOidPath ? currentOidPath + '.' : '') + oidParts[i];
+                newExpandedOids.add(currentOidPath); // パス上のOIDを展開状態に追加
             }
-        }
+            return newExpandedOids;
+        });
+
     } else {
-        // ノードが見つからなかった場合のアラート
         alert('指定されたOIDのノードは見つかりませんでした。');
         setSearchTargetOid(null); // ターゲットをクリア
     }
@@ -245,7 +246,8 @@ function App() {
                 <MIBTreeNode 
                   key={node.oid} 
                   node={node} 
-                  onNodeExpand={registerExpandSetter} // 展開状態を登録する関数を渡す
+                  expandedOids={expandedOids} // 展開状態のSetを渡す
+                  toggleNodeExpansion={toggleNodeExpansion} // 展開トグル関数を渡す
                   searchTargetOid={searchTargetOid} // 検索ターゲットOIDを渡す
                 />
               ))}
