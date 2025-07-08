@@ -67,7 +67,7 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggle
         if (nodeRef.current) {
           nodeRef.current.classList.remove('highlighted-node');
         }
-      }, 2000); 
+      }, 5000); 
       // コンポーネントがアンマウントされるか、isThisNodeSearchTarget が変更されたらタイマーをクリア
       return () => clearTimeout(timer);
     }
@@ -279,17 +279,34 @@ function App() {
     fetchMibData();
   }, []); // 空の依存配列は、コンポーネントのマウント時に一度だけ実行されることを意味する
 
-  // OID検索ハンドラ
+  // OID検索だけでなく、名前でも検索できるようにhandleSearchを修正
   const handleSearch = () => {
-    // 検索クエリが空の場合、検索ターゲットをクリアし、全ての展開状態をリセット
     if (!searchQuery) {
         setSearchTargetOid(null);
-        setExpandedOids(new Set()); // 全て閉じる
+        setExpandedOids(new Set());
         return;
     }
 
-    // フラットなリストから前方一致で検索
-    const foundNode = flatMibNodes.current.find(node => node.oid.startsWith(searchQuery));
+    const queryLower = searchQuery.toLowerCase();
+    let foundNode = null;
+
+    // 1. 完全一致のOIDを検索
+    foundNode = flatMibNodes.current.find(node => node.oid === searchQuery);
+
+    // 2. OIDの前方一致を検索
+    if (!foundNode) {
+        foundNode = flatMibNodes.current.find(node => node.oid.startsWith(searchQuery));
+    }
+
+    // 3. 名前の完全一致 (大文字小文字を区別しない) を検索
+    if (!foundNode) {
+        foundNode = flatMibNodes.current.find(node => node.name.toLowerCase() === queryLower);
+    }
+
+    // 4. 名前の部分一致 (大文字小文字を区別しない) を検索
+    if (!foundNode) {
+        foundNode = flatMibNodes.current.find(node => node.name.toLowerCase().includes(queryLower));
+    }
 
     if (foundNode) {
         setSearchTargetOid(foundNode.oid); // 検索ターゲットOIDを設定
@@ -307,7 +324,7 @@ function App() {
         });
 
     } else {
-        alert('指定されたOIDのノードは見つかりませんでした。');
+        alert('指定されたOIDまたは名前のノードは見つかりませんでした。');
         setSearchTargetOid(null); // ターゲットをクリア
     }
   };
@@ -350,10 +367,10 @@ function App() {
       <div className="search-bar-fixed">
         <input
           type="text"
-          placeholder="OIDを入力して検索 (例: 1.3.6.1.2.1)"
+          placeholder="OIDまたは名前で検索 (例: 1.3.6.1.2.1, tcpRtoAlgorithm)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyPress}
           // style={{ width: '300px', padding: '8px', marginRight: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
           // スタイルはCSSクラスに移動
         />
