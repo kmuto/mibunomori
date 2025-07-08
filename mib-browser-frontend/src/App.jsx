@@ -219,25 +219,25 @@ function App() {
       <header>
         <h1>SNMP MIB Browser (React)</h1>
       </header>
+      <div className="search-bar-fixed">
+        <input
+          type="text"
+          placeholder="OIDを入力して検索 (例: 1.3.6.1.2.1)"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyPress={handleKeyPress}
+          // style={{ width: '300px', padding: '8px', marginRight: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
+          // スタイルはCSSクラスに移動
+        />
+        <button 
+          onClick={handleSearch}
+          // style={{ padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          // スタイルはCSSクラスに移動
+        >
+          検索
+        </button>
+      </div>
       <main>
-        {/* 検索バー */}
-        <div className="search-bar" style={{ marginBottom: '20px' }}>
-          <input
-            type="text"
-            placeholder="OIDを入力して検索 (例: 1.3.6.1.2.1)"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
-            style={{ width: '300px', padding: '8px', marginRight: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
-          />
-          <button 
-            onClick={handleSearch}
-            style={{ padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            検索
-          </button>
-        </div>
-        
         {/* MIBツリーコンテナ */}
         <div id="mib-tree-container" className="mib-tree">
           {mibData.length > 0 ? (

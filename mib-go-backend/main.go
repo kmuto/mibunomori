@@ -14,16 +14,37 @@ import (
 
 	"github.com/rs/cors"
 	"github.com/sleepinggenius2/gosmi" // gosmiライブラリ
+	"github.com/sleepinggenius2/gosmi/types"
 )
 
 const mibDirectory = "mibs"
 
 // MIBツリーのノード構造を定義 (JSON出力用)
 type MIBNode struct {
-	Name        string     `json:"name"`
-	Oid         string     `json:"oid"`
-	Description string     `json:"description,omitempty"`
-	Children    []*MIBNode `json:"children,omitempty"`
+	Name        string              `json:"name"`
+	Oid         string              `json:"oid"`
+	Description string              `json:"description,omitempty"`
+	Children    []*MIBNode          `json:"children,omitempty"`
+	BaseType    string              `json:"nodeType,omitempty"`
+	Decl        string              `json:"decl,omitempty"`
+	Format      string              `json:"format,omitempty"`
+	Reference   string              `json:"reference,omitempty"`
+	Status      string              `json:"status,omitempty"`
+	Units       string              `json:"units,omitempty"`
+	EnumValues  []EnumValueResponse `json:"enumValues,omitempty"`
+	Ranges      []RangeResponse     `json:"ranges,omitempty"`
+}
+
+// EnumValueResponse は列挙型の一つの値を表す構造体
+type EnumValueResponse struct {
+	Value int    `json:"value"`
+	Label string `json:"label"`
+}
+
+// RangeResponse は範囲制約を表す構造体
+type RangeResponse struct {
+	Min int64 `json:"min"`
+	Max int64 `json:"max"`
 }
 
 var (
@@ -136,6 +157,30 @@ func buildMibTree() ([]*MIBNode, error) {
 			if smiNode.Description != "" {
 				node.Description = smiNode.Description
 			}
+			if smiNode.SmiType != nil {
+				node.BaseType = smiNode.SmiType.BaseType.String()
+				node.Decl = smiNode.SmiType.Decl.String()
+				node.Format = smiNode.SmiType.Format
+				node.Reference = smiNode.SmiType.Reference
+				node.Status = smiNode.SmiType.Status.String()
+				node.Units = smiNode.SmiType.Units
+				if smiNode.SmiType.Enum != nil {
+					for _, enumVal := range smiNode.SmiType.Enum.Values {
+						node.EnumValues = append(node.EnumValues, EnumValueResponse{
+							Value: int(enumVal.Value),
+							Label: enumVal.Name,
+						})
+					}
+				}
+				if smiNode.SmiType.Ranges != nil {
+					for _, rangeVal := range smiNode.SmiType.Ranges {
+						node.Ranges = append(node.Ranges, RangeResponse{
+							Min: rangeVal.MinValue,
+							Max: rangeVal.MaxValue,
+						})
+					}
+				}
+			}
 			nodesMap[node.Oid] = node
 		}
 	}
@@ -201,6 +246,65 @@ func compareOIDs(oid1, oid2 string) bool {
 	return len(parts1) < len(parts2)
 }
 
+// mibNodeDetailsHandler は /api/mib_node_details エンドポイントのハンドラです。
+func mibNodeDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	oidStr := r.URL.Query().Get("oid")
+	if oidStr == "" {
+		http.Error(w, `{"message": "OID query parameter is required."}`, http.StatusBadRequest)
+		return
+	}
+
+	smiNode, err := gosmi.GetNodeByOID(types.OidMustFromString(oidStr))
+	if err != nil {
+		log.Printf("Error getting node for OID %s: %v", oidStr, err)
+		http.Error(w, fmt.Sprintf(`{"message": "Node not found for OID %s: %s"}`, oidStr, err.Error()), http.StatusNotFound)
+		return
+	}
+
+	response := MIBNode{
+		Name: smiNode.Name,
+		Oid:  smiNode.Oid.String(),
+	}
+	if smiNode.Description != "" {
+		response.Description = smiNode.Description
+	}
+	if smiNode.SmiType != nil {
+		response.BaseType = smiNode.SmiType.BaseType.String()
+		response.Decl = smiNode.SmiType.Decl.String()
+		response.Format = smiNode.SmiType.Format
+		response.Reference = smiNode.SmiType.Reference
+		response.Status = smiNode.SmiType.Status.String()
+		response.Units = smiNode.SmiType.Units
+		if smiNode.SmiType.Enum != nil {
+			for _, enumVal := range smiNode.SmiType.Enum.Values {
+				response.EnumValues = append(response.EnumValues, EnumValueResponse{
+					Value: int(enumVal.Value),
+					Label: enumVal.Name,
+				})
+			}
+		}
+		if smiNode.SmiType.Ranges != nil {
+			for _, rangeVal := range smiNode.SmiType.Ranges {
+				response.Ranges = append(response.Ranges, RangeResponse{
+					Min: rangeVal.MinValue,
+					Max: rangeVal.MaxValue,
+				})
+			}
+		}
+	}
+
+	jsonBytes, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		log.Printf("Error marshalling node details to JSON: %v", err)
+		http.Error(w, `{"message": "Error processing node details."}`, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonBytes)
+}
+
 // mibTreeHandler は /api/mib_tree エンドポイントのハンドラです。
 func mibTreeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -239,6 +343,7 @@ func main() {
 	// HTTPサーバーの設定
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/mib_tree", mibTreeHandler)
+	mux.HandleFunc("/api/mib_node_details", mibNodeDetailsHandler)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "SNMP MIB Browser Backend is running. Access /api/mib_tree to get MIB data.")
 	})
