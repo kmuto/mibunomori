@@ -10,9 +10,25 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
  * @property {MIBNode[]} [children]
  */
 
+// NodeDetailsResponse の型定義 (GoバックエンドのNodeDetailsResponseに合わせる)
+/**
+ * @typedef {object} NodeDetailsResponse
+ * @property {string} name
+ * @property {string} oid
+ * @property {string} [description]
+ * @property {string} [nodeType]
+ * @property {string} [decl]
+ * @property {string} [format]
+ * @property {string} [reference]
+ * @property {string} [status]
+ * @property {string} [units]
+ * @property {Array<{value: number, label: string}>} [enumValues]
+ * @property {Array<{min: number, max: number}>} [ranges]
+ */
+
 // MIBツリーの個々のノードを表示するコンポーネント
 // React.memo を適用して、プロップが変更されない限り再レンダリングをスキップさせ、パフォーマンスを最適化
-const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggleNodeExpansion, searchTargetOid }) {
+const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggleNodeExpansion, searchTargetOid, onNodeClickForDetails }) {
   // このノードが展開されているかどうかを一元管理された状態から取得
   const isExpanded = expandedOids.has(node.oid);
   // このノードのDOM要素への参照
@@ -24,11 +40,19 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggle
   const isThisNodeSearchTarget = searchTargetOid === node.oid;
 
   // 展開/折りたたみトグル関数。親から渡された関数を呼び出す
-  const handleClick = useCallback(() => {
+  // このハンドラはノードの主要なクリック領域（アイコン、名前）にアタッチされます。
+  const handleToggleExpand = useCallback(() => {
     if (hasChildren) {
-      toggleNodeExpansion(node.oid); // 親の展開状態を更新
+      toggleNodeExpansion(node.oid);
     }
   }, [hasChildren, node.oid, toggleNodeExpansion]);
+
+  // 詳細ポップアップ表示のためのハンドラ。OID部分にのみアタッチされます。
+  // event.stopPropagation() を呼び出して、親要素（展開/折りたたみ用span）へのイベント伝播を防ぎます。
+  const handleShowDetails = useCallback((event) => {
+    event.stopPropagation(); // 親の展開/折りたたみイベントが発火するのを防ぐ
+    onNodeClickForDetails(node.oid);
+  }, [node.oid, onNodeClickForDetails]);
 
   // このノードが検索ターゲットになった場合の処理
   useEffect(() => {
@@ -54,7 +78,7 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggle
     <li className={hasChildren ? 'has-children' : ''}>
       {/* クリック可能な要素を span で囲む。アイコンの表示と回転もこの span で制御 */}
       <span
-        onClick={handleClick} // クリックハンドラを変更
+        onClick={handleToggleExpand} // 展開/折りたたみのみ
         // アイコン回転用クラスと、検索ターゲット時のハイライトクラスを適用
         className={`${isExpanded ? 'expanded' : ''} ${isThisNodeSearchTarget ? 'highlighted-node' : ''}`}
         // クリック領域を確保するためブロック要素に、子ノードがある場合はカーソルをポインターに
@@ -62,7 +86,9 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggle
         ref={nodeRef} // DOM要素の参照を設定
       >
         <span className="node-name">{node.name}</span>
-        <span className="node-oid">({node.oid})</span>
+        <span className="node-name">{node.name}</span>
+        {/* OID部分。ここをクリックすると詳細ポップアップが表示されます */}
+        <span className="node-oid" onClick={handleShowDetails}>({node.oid})</span>
         {node.description && (
           <span className="node-description">{node.description}</span>
         )}
@@ -78,6 +104,7 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggle
               expandedOids={expandedOids} // 展開状態を子に渡す
               toggleNodeExpansion={toggleNodeExpansion} // 展開トグル関数を子に渡す
               searchTargetOid={searchTargetOid} // 検索ターゲットOIDを子に渡す
+              onNodeClickForDetails={onNodeClickForDetails} // 子コンポーネントにも渡す
             />
           ))}
         </ul>
@@ -86,6 +113,71 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggle
   );
 });
 
+// MIBノード詳細表示モーダルコンポーネント
+function NodeDetailsModal({ details, loading, error, onClose }) {
+    // if (!details && !loading && !error) return null; // データがない場合は表示しない
+
+       // Escapeキーでモーダルを閉じるためのuseEffect
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                onClose(); // onClose 関数を呼び出してモーダルを閉じる
+            }
+        };
+
+        // イベントリスナーを追加
+        document.addEventListener('keydown', handleKeyDown);
+
+        // クリーンアップ関数: コンポーネントがアンマウントされるときにイベントリスナーを削除
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [onClose]); // onClose が変更された場合にのみ再実行（通常は変更されない）
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}> {/* クリック伝播停止 */}
+                <button className="modal-close-button" onClick={onClose}>&times;</button>
+                {loading && <p className="loading-message">詳細情報をロード中...</p>}
+                {error && <p className="error-message">詳細情報の取得に失敗しました: {error}</p>}
+                {details && !loading && !error && (
+                    <div>
+                        <h2>{details.name} ({details.oid})</h2>
+                        {details.description && <p><strong>Description:</strong> {details.description}</p>}
+                        {details.nodeType && <p><strong>Node Type:</strong> {details.nodeType}</p>}
+                        {details.format && <p><strong>Format:</strong> {details.format}</p>}
+                        {details.decl && <p><strong>Declaration:</strong> {details.decl}</p>}
+                        {details.status && <p><strong>Status:</strong> {details.status}</p>}
+                        {details.units && <p><strong>Units:</strong> {details.units}</p>}
+                        {details.reference && <p><strong>Reference:</strong> {details.reference}</p>}
+
+                        {details.enumValues && details.enumValues.length > 0 && (
+                            <>
+                                <p><strong>Enum Values:</strong></p>
+                                <ul>
+                                    {details.enumValues.map(enumVal => (
+                                        <li key={enumVal.value}>{enumVal.label} ({enumVal.value})</li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
+
+                        {details.ranges && details.ranges.length > 0 && (
+                            <>
+                                <p><strong>Ranges:</strong></p>
+                                <ul>
+                                    {details.ranges.map((rangeVal, index) => (
+                                        <li key={index}>{rangeVal.min} - {rangeVal.max}</li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
 
 // MIBツリー全体を表示するメインアプリケーションコンポーネント
 function App() {
@@ -102,6 +194,13 @@ function App() {
   // MIBデータをフラットなリストとして保持（検索効率化のため）
   const flatMibNodes = useRef([]);
 
+  // --- 詳細モーダル関連のステート ---
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedNodeDetails, setSelectedNodeDetails] = useState(null); // NodeDetailsResponse 型のデータ
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState(null);
+  // --- ここまで ---
+
   // ノードの展開状態をトグルする関数
   // useCallbackでメモ化し、子コンポーネントへの不要な再生成を防ぐ
   const toggleNodeExpansion = useCallback((oid) => {
@@ -114,6 +213,35 @@ function App() {
       }
       return newExpandedOids;
     });
+  }, []);
+
+   // ノードがクリックされたときに詳細情報を取得するハンドラ
+  const handleNodeClickForDetails = useCallback(async (oid) => {
+    setShowDetailsModal(true); // モーダルを表示状態に
+    setDetailsLoading(true);   // ロード中状態に
+    setSelectedNodeDetails(null); // 前回の詳細情報をクリア
+    setDetailsError(null);     // エラーをクリア
+
+    try {
+        const response = await fetch(`http://localhost:5000/api/mib_node_details?oid=${oid}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setSelectedNodeDetails(data); // 取得した詳細情報をセット
+    } catch (err) {
+        console.error('Error fetching node details:', err);
+        setDetailsError(err.message); // エラーメッセージをセット
+    } finally {
+        setDetailsLoading(false); // ロード完了
+    }
+  }, []); // 依存配列は空でOK、関数は再生成されない
+
+  // モーダルを閉じるハンドラ
+  const closeDetailsModal = useCallback(() => {
+    setShowDetailsModal(false);
+    setSelectedNodeDetails(null);
+    setDetailsError(null);
   }, []);
 
   // コンポーネントマウント時にバックエンドからMIBデータを取得
@@ -217,7 +345,7 @@ function App() {
   return (
     <>
       <header>
-        <h1>SNMP MIB Browser (React)</h1>
+        <h1>SNMP MIB Browser</h1>
       </header>
       <div className="search-bar-fixed">
         <input
@@ -249,6 +377,7 @@ function App() {
                   expandedOids={expandedOids} // 展開状態のSetを渡す
                   toggleNodeExpansion={toggleNodeExpansion} // 展開トグル関数を渡す
                   searchTargetOid={searchTargetOid} // 検索ターゲットOIDを渡す
+                  onNodeClickForDetails={handleNodeClickForDetails} // 新しいプロップを渡す
                 />
               ))}
             </ul>
@@ -258,8 +387,18 @@ function App() {
         </div>
       </main>
       <footer>
-        <p>&copy; 2025 SNMP MIB Browser</p>
+        <p>&copy; 2025 Kenshi Muto</p>
       </footer>
+
+      {/* モーダルコンポーネントのレンダリング */}
+      {showDetailsModal && (
+        <NodeDetailsModal
+          details={selectedNodeDetails}
+          loading={detailsLoading}
+          error={detailsError}
+          onClose={closeDetailsModal}
+        />
+      )}
     </>
   );
 }
