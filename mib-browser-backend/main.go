@@ -13,7 +13,7 @@ import (
 	"sync"
 
 	"github.com/rs/cors"
-	"github.com/sleepinggenius2/gosmi" // gosmiライブラリ
+	"github.com/sleepinggenius2/gosmi"
 	"github.com/sleepinggenius2/gosmi/types"
 )
 
@@ -53,14 +53,10 @@ var (
 	mibLoadError  error      // MIBロード中に発生したエラー
 )
 
-// initSMI initializes the gosmi MIB parser and loads MIB files.
-// gosmi v0.4.4 の内部実装とテストコードに基づいています。
 func initSMI() error {
 	mibOnce.Do(func() {
 		log.Println("Initializing gosmi and loading MIBs...")
 
-		// gosmi の内部グローバルインスタンスを初期化する
-		// これが v0.4.x の新しい初期化方法のようです
 		gosmi.Init()
 		log.Println("gosmi.Init() called.")
 
@@ -71,7 +67,6 @@ func initSMI() error {
 				return nil
 			}
 			if d.IsDir() {
-				// gosmi.AppendPath() で検索パスを追加
 				gosmi.AppendPath(path)
 				log.Printf("Added MIB search path: %s", path)
 			}
@@ -106,7 +101,6 @@ func initSMI() error {
 		for _, filePath := range filesToLoad {
 			moduleName := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
 
-			// gosmi.LoadModule() でモジュール名からロード
 			_, err := gosmi.LoadModule(moduleName)
 			if err != nil {
 				log.Printf("Warning: Failed to load MIB module %s (from file %s): %v. Skipping.", moduleName, filePath, err)
@@ -131,8 +125,6 @@ func initSMI() error {
 	return mibLoadError
 }
 
-// buildMibTree は gosmi の情報からツリー構造を構築します。
-// gosmi のグローバルなインスタンスからノードを取得します。
 func buildMibTree() ([]*MIBNode, error) {
 	// gosmi.GetLoadedModules() でロード済みモジュール名を取得し、各モジュールのノードを取得する
 	nodesMap := make(map[string]*MIBNode)
@@ -349,10 +341,24 @@ func main() {
 	})
 
 	// CORSミドルウェアの設定
-	// 開発中は全てのリクエスト元を許可するのが手軽ですが、
-	// 本番環境では特定のオリジンに制限することをお勧めします。
+
+	// 環境変数から許可するオリジンを読み込む
+	// カンマ区切りで複数のオリジンを指定できるようにする
+	allowedOriginsStr := os.Getenv("FRONTEND_ORIGINS")
+	var allowedOrigins []string
+	if allowedOriginsStr != "" {
+		allowedOrigins = strings.Split(allowedOriginsStr, ",")
+		// 各オリジンの前後の空白をトリム
+		for i, origin := range allowedOrigins {
+			allowedOrigins[i] = strings.TrimSpace(origin)
+		}
+	} else {
+		// 環境変数が設定されていない場合のデフォルト値
+		allowedOrigins = []string{"http://localhost:5173"}
+		log.Printf("FRONTEND_ORIGINS environment variable not set. Defaulting to %v", allowedOrigins)
+	}
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173"},                   // Reactアプリのオリジンを指定
+		AllowedOrigins:   allowedOrigins,                                      // Reactアプリのオリジンを指定
 		AllowCredentials: true,                                                // クッキーなどの認証情報を許可する場合
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}, // 許可するHTTPメソッド
 		AllowedHeaders:   []string{"*"},                                       // 全てのヘッダーを許可。特定のヘッダーのみ許可する場合は具体的に記述

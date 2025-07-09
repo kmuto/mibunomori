@@ -86,7 +86,6 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggle
         ref={nodeRef} // DOM要素の参照を設定
       >
         <span className="node-name">{node.name}</span>
-        <span className="node-name">{node.name}</span>
         {/* OID部分。ここをクリックすると詳細ポップアップが表示されます */}
         <span className="node-oid" onClick={handleShowDetails}>({node.oid})</span>
         {node.description && (

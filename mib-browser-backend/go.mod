@@ -1,4 +1,4 @@
-module mib-go-backend
+module mib-browser-backend
 
 go 1.23.1
 
