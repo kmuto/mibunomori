@@ -1,0 +1,22 @@
+{
+  "app_title": "MIB no Mori",
+  "loading_mib_tree": "Loading MIB tree...",
+  "failed_to_load_mib_data": "Failed to load MIB data:",
+  "no_mib_nodes_to_display": "No MIB nodes to display.",
+  "search_placeholder": "Search by OID or name (e.g., 1.3.6.1.2.1, tcpRtoAlgorithm)",
+  "search_button": "Search",
+  "node_not_found": "Node not found for the specified OID or name.",
+  "modal_loading_details": "Loading details...",
+  "modal_failed_to_load_details": "Failed to load details:",
+  "modal_description": "Description",
+  "modal_node_type": "Node Type",
+  "modal_format": "Format",
+  "modal_declaration": "Declaration",
+  "modal_status": "Status",
+  "modal_units": "Units",
+  "modal_reference": "Reference",
+  "modal_enum_values": "Enum Values",
+  "modal_ranges": "Ranges",
+  "language_japanese": "日本語",
+  "language_english": "English"
+}

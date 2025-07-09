@@ -1,0 +1,22 @@
+{
+  "app_title": "MIBの杜",
+  "loading_mib_tree": "MIBツリーをロード中...",
+  "failed_to_load_mib_data": "MIBデータのロードに失敗しました:",
+  "no_mib_nodes_to_display": "表示するMIBノードがありません。",
+  "search_placeholder": "OIDまたは名前で検索 (例: 1.3.6.1.2.1, tcpRtoAlgorithm)",
+  "search_button": "検索",
+  "node_not_found": "指定されたOIDまたは名前のノードは見つかりませんでした。",
+  "modal_loading_details": "詳細情報をロード中...",
+  "modal_failed_to_load_details": "詳細情報の取得に失敗しました:",
+  "modal_description": "説明",
+  "modal_node_type": "ノードタイプ",
+  "modal_format": "フォーマット",
+  "modal_declaration": "宣言",
+  "modal_status": "ステータス",
+  "modal_units": "単位",
+  "modal_reference": "参照",
+  "modal_enum_values": "列挙値",
+  "modal_ranges": "範囲",
+  "language_japanese": "日本語",
+  "language_english": "English"
+}

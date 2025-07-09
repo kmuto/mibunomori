@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// import './App.css'; // 必要であれば独自のCSSファイルをインポート。今回はindex.cssで十分。
+import { useTranslation } from 'react-i18next';
 
-// MIBNodeの型定義 (TypeScriptを使わない場合はコメントアウトしてもOK)
+// MIBNode Type Definition
 /**
  * @typedef {object} MIBNode
  * @property {string} name
@@ -10,7 +10,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
  * @property {MIBNode[]} [children]
  */
 
-// NodeDetailsResponse の型定義 (GoバックエンドのNodeDetailsResponseに合わせる)
+// NodeDetailsResponse Type Definition
 /**
  * @typedef {object} NodeDetailsResponse
  * @property {string} name
@@ -61,13 +61,13 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggle
       nodeRef.current.classList.add('highlighted-node');
       // ノードがビューポート内に表示されるようにスクロール
       nodeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
+
       // 2秒後にハイライトを消すタイマーを設定
       const timer = setTimeout(() => {
         if (nodeRef.current) {
           nodeRef.current.classList.remove('highlighted-node');
         }
-      }, 5000); 
+      }, 5000);
       // コンポーネントがアンマウントされるか、isThisNodeSearchTarget が変更されたらタイマーをクリア
       return () => clearTimeout(timer);
     }
@@ -93,14 +93,14 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggle
           <span className="node-description">{node.description}</span>
         )}
       </span>
-      
+
       {/* 子ノードがある場合、かつ展開されている場合のみ子ノードの ul をレンダリングする */}
-      {hasChildren && isExpanded && ( // ここは前回の修正のまま
+      {hasChildren && isExpanded && (
         <ul>
           {node.children.map((childNode) => (
-            <MIBTreeNode 
-              key={childNode.oid} 
-              node={childNode} 
+            <MIBTreeNode
+              key={childNode.oid}
+              node={childNode}
               expandedOids={expandedOids} // 展開状態を子に渡す
               toggleNodeExpansion={toggleNodeExpansion} // 展開トグル関数を子に渡す
               searchTargetOid={searchTargetOid} // 検索ターゲットOIDを子に渡す
@@ -115,7 +115,7 @@ const MIBTreeNode = React.memo(function MIBTreeNode({ node, expandedOids, toggle
 
 // MIBノード詳細表示モーダルコンポーネント
 function NodeDetailsModal({ details, loading, error, onClose }) {
-    // if (!details && !loading && !error) return null; // データがない場合は表示しない
+    const { t } = useTranslation();
 
        // Escapeキーでモーダルを閉じるためのuseEffect
     useEffect(() => {
@@ -138,22 +138,22 @@ function NodeDetailsModal({ details, loading, error, onClose }) {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}> {/* クリック伝播停止 */}
                 <button className="modal-close-button" onClick={onClose}>&times;</button>
-                {loading && <p className="loading-message">詳細情報をロード中...</p>}
-                {error && <p className="error-message">詳細情報の取得に失敗しました: {error}</p>}
+                {loading && <p className="loading-message">{t('modal_loading_details')}</p>}
+                {error && <p className="error-message">{t('modal_failed_to_load_details')} {error}</p>}
                 {details && !loading && !error && (
                     <div>
                         <h2>{details.name} ({details.oid})</h2>
-                        {details.description && <p><strong>Description:</strong> {details.description}</p>}
-                        {details.nodeType && <p><strong>Node Type:</strong> {details.nodeType}</p>}
-                        {details.format && <p><strong>Format:</strong> {details.format}</p>}
-                        {details.decl && <p><strong>Declaration:</strong> {details.decl}</p>}
-                        {details.status && <p><strong>Status:</strong> {details.status}</p>}
-                        {details.units && <p><strong>Units:</strong> {details.units}</p>}
-                        {details.reference && <p><strong>Reference:</strong> {details.reference}</p>}
+                        {details.description && <p><strong>{t('modal_description')}:</strong> {details.description}</p>}
+                        {details.nodeType && <p><strong>{t('modal_node_type')}:</strong> {details.nodeType}</p>}
+                        {details.format && <p><strong>{t('modal_format')}:</strong> {details.format}</p>}
+                        {details.decl && <p><strong>{t('modal_declaration')}:</strong> {details.decl}</p>}
+                        {details.status && <p><strong>{t('modal_status')}:</strong> {details.status}</p>}
+                        {details.units && <p><strong>{t('modal_units')}:</strong> {details.units}</p>}
+                        {details.reference && <p><strong>{t('modal_reference')}:</strong> {details.reference}</p>}
 
                         {details.enumValues && details.enumValues.length > 0 && (
                             <>
-                                <p><strong>Enum Values:</strong></p>
+                                <p><strong>{t('modal_enum_values')}:</strong></p>
                                 <ul>
                                     {details.enumValues.map(enumVal => (
                                         <li key={enumVal.value}>{enumVal.label} ({enumVal.value})</li>
@@ -164,7 +164,7 @@ function NodeDetailsModal({ details, loading, error, onClose }) {
 
                         {details.ranges && details.ranges.length > 0 && (
                             <>
-                                <p><strong>Ranges:</strong></p>
+                                <p><strong>{t('modal_ranges')}:</strong></p>
                                 <ul>
                                     {details.ranges.map((rangeVal, index) => (
                                         <li key={index}>{rangeVal.min} - {rangeVal.max}</li>
@@ -181,6 +181,7 @@ function NodeDetailsModal({ details, loading, error, onClose }) {
 
 // MIBツリー全体を表示するメインアプリケーションコンポーネント
 function App() {
+  const { t, i18n } = useTranslation(); // useTranslation フックを使用
   const [mibData, setMibData] = useState([]); // MIBデータ
   const [loading, setLoading] = useState(true); // ロード中状態
   const [error, setError] = useState(null); // エラー状態
@@ -189,17 +190,17 @@ function App() {
 
   // 展開されているOIDのセットを一元管理
   // Setオブジェクトは参照が変更されない限りReactは再レンダリングしないので、効率的
-  const [expandedOids, setExpandedOids] = useState(new Set()); 
+  const [expandedOids, setExpandedOids] = useState(new Set());
 
   // MIBデータをフラットなリストとして保持（検索効率化のため）
   const flatMibNodes = useRef([]);
 
-  // --- 詳細モーダル関連のステート ---
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedNodeDetails, setSelectedNodeDetails] = useState(null); // NodeDetailsResponse 型のデータ
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState(null);
-  // --- ここまで ---
 
   // ノードの展開状態をトグルする関数
   // useCallbackでメモ化し、子コンポーネントへの不要な再生成を防ぐ
@@ -223,7 +224,7 @@ function App() {
     setDetailsError(null);     // エラーをクリア
 
     try {
-        const response = await fetch(`http://localhost:5000/api/mib_node_details?oid=${oid}`);
+        const response = await fetch(`${API_BASE_URL}/api/mib_node_details?oid=${oid}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -248,13 +249,13 @@ function App() {
   useEffect(() => {
     const fetchMibData = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/mib_tree');
+        const response = await fetch(`${API_BASE_URL}/api/mib_tree`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
         setMibData(data);
-        
+
         // MIBデータをフラット化して検索用に保持するヘルパー関数
         const flatten = (nodes) => {
             let result = [];
@@ -310,7 +311,7 @@ function App() {
 
     if (foundNode) {
         setSearchTargetOid(foundNode.oid); // 検索ターゲットOIDを設定
-        
+
         // ターゲットノードまでのパスを全て展開するための新しいSetを作成
         setExpandedOids(prevExpandedOids => {
             const newExpandedOids = new Set(prevExpandedOids); // 既存の展開状態をコピー
@@ -324,7 +325,7 @@ function App() {
         });
 
     } else {
-        alert('指定されたOIDまたは名前のノードは見つかりませんでした。');
+        alert(t('node_not_found'));
         setSearchTargetOid(null); // ターゲットをクリア
     }
   };
@@ -336,12 +337,17 @@ function App() {
     }
   };
 
+  // 言語切り替えハンドラ
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+  };
+
   // ロード中の表示
   if (loading) {
     return (
       <main>
         <div id="mib-tree-container" className="mib-tree">
-          <p>MIBツリーをロード中...</p>
+          <p>{t('loading_mib_tree')}</p>
         </div>
       </main>
     );
@@ -352,7 +358,7 @@ function App() {
     return (
       <main>
         <div id="mib-tree-container" className="mib-tree">
-          <p className="error">MIBデータのロードに失敗しました: {error}</p>
+          <p className="error">{t('failed_to_load_mib_data')} {error}</p>
         </div>
       </main>
     );
@@ -362,35 +368,38 @@ function App() {
   return (
     <>
       <header>
-        <h1>SNMP MIB Browser</h1>
+        <h1>{t('app_title')}</h1>
+        <div className="language-switcher">
+          <button onClick={() => changeLanguage('ja')} disabled={i18n.language === 'ja'}>
+            {t('language_japanese')}
+          </button>
+          <button onClick={() => changeLanguage('en')} disabled={i18n.language === 'en'}>
+            {t('language_english')}
+          </button>
+        </div>
       </header>
       <div className="search-bar-fixed">
         <input
           type="text"
-          placeholder="OIDまたは名前で検索 (例: 1.3.6.1.2.1, tcpRtoAlgorithm)"
+          placeholder={t('search_placeholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={handleKeyPress}
-          // style={{ width: '300px', padding: '8px', marginRight: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
-          // スタイルはCSSクラスに移動
         />
-        <button 
+        <button
           onClick={handleSearch}
-          // style={{ padding: '8px 15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          // スタイルはCSSクラスに移動
         >
-          検索
+          {t('search_button')}
         </button>
       </div>
       <main>
-        {/* MIBツリーコンテナ */}
         <div id="mib-tree-container" className="mib-tree">
           {mibData.length > 0 ? (
             <ul>
               {mibData.map((node) => (
-                <MIBTreeNode 
-                  key={node.oid} 
-                  node={node} 
+                <MIBTreeNode
+                  key={node.oid}
+                  node={node}
                   expandedOids={expandedOids} // 展開状態のSetを渡す
                   toggleNodeExpansion={toggleNodeExpansion} // 展開トグル関数を渡す
                   searchTargetOid={searchTargetOid} // 検索ターゲットOIDを渡す
@@ -399,7 +408,7 @@ function App() {
               ))}
             </ul>
           ) : (
-            <p>表示するMIBノードがありません。</p>
+            <p>{t('no_mib_nodes_to_display')}</p>
           )}
         </div>
       </main>
@@ -407,7 +416,6 @@ function App() {
         <p>&copy; 2025 Kenshi Muto</p>
       </footer>
 
-      {/* モーダルコンポーネントのレンダリング */}
       {showDetailsModal && (
         <NodeDetailsModal
           details={selectedNodeDetails}

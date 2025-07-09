@@ -67,7 +67,6 @@ button:focus-visible {
   }
 }
 
-/* 既存の style.css の内容をコピー */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -126,8 +125,6 @@ main {
     padding-left: 20px;
 }
 
-/* ul ul { display: none; } は不要、JSで制御 */
-
 .mib-tree li {
     margin: 5px 0;
     line-height: 1.5;
@@ -180,7 +177,7 @@ main {
     transition: background-color 0.3s ease;
 }
 
-/* --- 追加: モーダル関連のスタイル --- */
+/* --- モーダル関連のスタイル --- */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -263,19 +260,19 @@ main {
 
 /* 検索バー内の要素のスタイル */
 .search-bar-fixed input {
-    width: 600px; 
-    padding: 8px; 
-    margin-right: 10px; 
-    border-radius: 4px; 
+    width: 600px;
+    padding: 8px;
+    margin-right: 10px;
+    border-radius: 4px;
     border: 1px solid #ccc;
 }
 
 .search-bar-fixed button {
-    padding: 8px 15px; 
-    background-color: #007bff; 
-    color: white; 
-    border: none; 
-    border-radius: 4px; 
+    padding: 8px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
     cursor: pointer;
 }
 
@@ -285,4 +282,37 @@ footer {
     margin-top: 20px;
     color: #666;
     font-size: 0.8em;
+}
+
+/* 言語切り替えボタンのスタイル */
+.language-switcher {
+    position: absolute; /* ヘッダー内で絶対配置 */
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 10px; /* ボタン間のスペース */
+}
+
+.language-switcher button {
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ccc;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.language-switcher button:hover:not(:disabled) {
+    background-color: #e0e0e0;
+    border-color: #aaa;
+}
+
+.language-switcher button:disabled {
+    background-color: #ddd;
+    color: #888;
+    cursor: not-allowed;
+    border-color: #bbb;
 }
